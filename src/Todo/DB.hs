@@ -7,9 +7,10 @@ module Todo.DB
     , editTag
     ) where
 
-import           Todo.Model
-import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
-import qualified Data.List as List
+import Data.List (delete, find)
+import Data.List.NonEmpty (NonEmpty (..), fromList, toList)
+
+import Todo.Model (Todo (..), Todos, Tag (..))
 
 data TodoDB = TodoDB
     { dbTodos :: Todos
@@ -19,28 +20,28 @@ data TodoDB = TodoDB
 data DBError = SingleTaggedTodo  deriving (Eq, Show)
 
 addTodo :: Todo -> TodoDB -> TodoDB
-addTodo todo TodoDB { .. } = TodoDB { dbTodos = todo : dbTodos, .. }
+addTodo todo TodoDB {..} = TodoDB { dbTodos = todo : dbTodos, .. }
 
 addTag :: Tag -> TodoDB -> TodoDB
-addTag tag TodoDB { .. } = TodoDB { dbTags = tag : dbTags, .. }
+addTag tag TodoDB {..} = TodoDB { dbTags = tag : dbTags, .. }
 
 deleteTag :: Tag -> TodoDB -> Either DBError TodoDB
-deleteTag tag TodoDB { .. } = case List.find ((tag :| [] ==) . todoTags) dbTodos of
+deleteTag tag TodoDB {..} = case find ((tag :| [] ==) . todoTags) dbTodos of
     Just _  -> Left SingleTaggedTodo
     Nothing -> Right $ TodoDB { dbTodos = map removeTag dbTodos
-                              , dbTags = List.delete tag dbTags 
+                              , dbTags = delete tag dbTags
                               }
   where
     removeTag :: Todo -> Todo
-    removeTag Todo { .. } = Todo { todoTags = fromList $ List.delete tag . toList $ todoTags, .. }
+    removeTag Todo {..} = Todo { todoTags = fromList $ delete tag . toList $ todoTags, .. }
 
 editTag :: Tag -> Tag -> TodoDB -> TodoDB
-editTag old new TodoDB { .. } = TodoDB { dbTodos = map renameTag dbTodos
-                                       , dbTags = new : List.delete old dbTags 
-                                       }
+editTag old new TodoDB {..} = TodoDB { dbTodos = map renameTag dbTodos
+                                     , dbTags = new : delete old dbTags
+                                     }
   where
     renameTag :: Todo -> Todo
-    renameTag Todo { .. } = Todo { todoTags = fromList $ replace $ toList todoTags, .. }
+    renameTag Todo {..} = Todo { todoTags = fromList $ replace $ toList todoTags, .. }
 
     replace :: [Tag] -> [Tag]
     replace []      = []
