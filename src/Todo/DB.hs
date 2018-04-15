@@ -7,44 +7,49 @@ module Todo.DB
     , editTag
     ) where
 
-import Data.List (delete, find)
-import Data.List.NonEmpty (NonEmpty (..), fromList, toList)
+import Data.HashSet (HashSet)
+import Data.Foldable (toList)
+import qualified Data.HashSet as HSet
 
-import Todo.Model (Todo (..), Todos, Tag (..))
+import Todo.Model (Todo (..), Tag (..))
+import Data.NESet (NonEmptySet (..))
+import qualified Data.NESet as NESet
 
 data TodoDB = TodoDB
-    { dbTodos :: Todos
-    , dbTags  :: [Tag]
+    { dbTodos :: HashSet Todo
+    , dbTags  :: HashSet Tag
     } deriving (Eq, Show)
 
-data DBError = SingleTaggedTodo  deriving (Eq, Show)
+data DBError = SingleTaggedTodo | NotRegisteredTags deriving (Eq, Show)
 
-addTodo :: Todo -> TodoDB -> TodoDB
-addTodo todo TodoDB {..} = TodoDB { dbTodos = todo : dbTodos, .. }
+addTodo :: Todo -> TodoDB -> Either DBError TodoDB
+addTodo todo@Todo {..} TodoDB {..} 
+    | HSet.null missing = Right TodoDB { dbTodos = HSet.insert todo dbTodos, .. }
+    | otherwise         = Left NotRegisteredTags
+  where
+    missing = NESet.filter (\t -> not $ HSet.member t dbTags) todoTags
 
 addTag :: Tag -> TodoDB -> TodoDB
-addTag tag TodoDB {..} = TodoDB { dbTags = tag : dbTags, .. }
+addTag tag TodoDB {..} = TodoDB { dbTags = HSet.insert tag dbTags, .. }
 
 deleteTag :: Tag -> TodoDB -> Either DBError TodoDB
-deleteTag tag TodoDB {..} = case find ((tag :| [] ==) . todoTags) dbTodos of
-    Just _  -> Left SingleTaggedTodo
-    Nothing -> Right $ TodoDB { dbTodos = map removeTag dbTodos
-                              , dbTags = delete tag dbTags
-                              }
+deleteTag tag TodoDB {..} = case mapM removeTag $ toList dbTodos of
+    Nothing    -> Left SingleTaggedTodo
+    Just todos -> Right TodoDB { dbTodos = HSet.fromList todos, .. }
   where
-    removeTag :: Todo -> Todo
-    removeTag Todo {..} = Todo { todoTags = fromList $ delete tag . toList $ todoTags, .. }
+    removeTag :: Todo -> Maybe Todo
+    removeTag Todo {..} = do
+        tags <- NESet.fromSet $ NESet.delete tag todoTags
+        Just Todo { todoTags = tags, .. }
 
 editTag :: Tag -> Tag -> TodoDB -> TodoDB
-editTag old new TodoDB {..} = TodoDB { dbTodos = map renameTag dbTodos
-                                     , dbTags = new : delete old dbTags
+editTag old new TodoDB {..} = TodoDB { dbTodos = HSet.map renameTag dbTodos
+                                     , dbTags = HSet.insert new (HSet.delete old dbTags)
                                      }
   where
     renameTag :: Todo -> Todo
-    renameTag Todo {..} = Todo { todoTags = fromList $ replace $ toList todoTags, .. }
-
-    replace :: [Tag] -> [Tag]
-    replace []      = []
-    replace (t:ts)
-        | t == old  = new : ts
-        | otherwise = t : replace ts
+    renameTag Todo { todoTags = (t :< ts), .. } = Todo { todoTags = tags, .. } 
+      where
+        tags
+            | t == old  = new :< ts 
+            | otherwise = t :< HSet.insert new (HSet.delete old ts)

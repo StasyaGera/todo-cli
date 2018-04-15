@@ -14,20 +14,32 @@ module Todo.Model
     , tagStatistics
     ) where
 
-import Data.List (group, sort, sortBy)
-import Data.List.NonEmpty (NonEmpty (..), toList)
+import Data.List (sortBy, foldl')
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Ord (comparing)
 import Data.Ratio (Ratio)
 import Numeric.Natural (Natural)
+import GHC.Generics (Generic)
+import Data.Hashable (Hashable (..))
+import Data.HashSet (HashSet)
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashSet as HSet
+import qualified Data.HashMap.Strict as HMap
+import Data.Foldable (toList)
 
-data State = TODO | DONE | FAIL deriving (Eq, Show)
-newtype Title = Title (NonEmpty Char) deriving (Eq, Show)
+import Data.NESet (NonEmptySet (..))
+import qualified Data.NESet as NESet
+
+data State = TODO | DONE | FAIL deriving (Eq, Show, Generic)
+newtype Title = Title (NonEmpty Char) deriving (Eq, Show, Hashable)
 -- the higher the priority value, the more urgent the task
-newtype Priority = Priority (Ratio Natural) deriving (Eq, Show, Ord)
-newtype Tag = Tag (NonEmpty Char) deriving (Eq, Show, Ord)
-newtype Deadline = Deadline Int deriving (Eq, Show, Ord)
-type Tags = NonEmpty Tag
-type Todos = [Todo]
+newtype Priority = Priority (Ratio Natural) deriving (Eq, Show, Ord, Hashable)
+newtype Tag = Tag (NonEmpty Char) deriving (Eq, Show, Ord, Hashable)
+newtype Deadline = Deadline Int deriving (Eq, Show, Ord, Hashable)
+type Tags = NonEmptySet Tag
+type Todos = HashSet Todo
+
+instance Hashable State
 
 data Todo = Todo
     { todoState       :: State
@@ -37,27 +49,28 @@ data Todo = Todo
     , todoSubtasks    :: Todos
     , todoDeadline    :: Maybe Deadline
     , todoDescription :: Maybe String
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Generic)
+
+instance Hashable Todo 
 
 defTodo :: Title -> Priority -> Tags -> Todo
 defTodo todoTitle todoPriority todoTags = Todo { todoState = TODO
-                                               , todoSubtasks = []
+                                               , todoSubtasks = mempty
                                                , todoDeadline = Nothing
                                                , todoDescription = Nothing
                                                , .. }
 
 getByState :: State -> Todos -> Todos
-getByState state = filter $ (state ==) . todoState
+getByState state = HSet.filter $ (state ==) . todoState
 
 getByTag :: Tag -> Todos -> Todos
-getByTag tag = filter $ elem tag . todoTags
+getByTag tag = HSet.filter $ NESet.member tag . todoTags
 
 getTopPrio :: Int -> Todos -> Todos
-getTopPrio n = take n . sortBy (flip $ comparing todoPriority)
+getTopPrio n = HSet.fromList . take n . sortBy (flip $ comparing todoPriority) . toList
 
-tagStatistics :: Todos -> [(Tag, Int)]
+tagStatistics :: Todos -> HashMap Tag Int
 tagStatistics = count . concatMap (toList . todoTags)
   where
-    -- from Data.List.Unique
-    count :: Ord a => [a] -> [(a, Int)]
-    count = map (\x -> (head x, length x)) . group . sort
+    count :: (Eq a, Hashable a) => [a] -> HashMap a Int
+    count = foldl' (\dict x -> HMap.insertWith (+) x 1 dict) mempty
