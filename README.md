@@ -1,5 +1,7 @@
 # TODO console app 
 
+[![Build Status](https://travis-ci.org/StasyaGera/todo-cli.svg?branch=master)](https://www.travis-ci.org/StasyaGera/todo-cli)
+
 ## Fields
 
 A typical TODO item should have:
