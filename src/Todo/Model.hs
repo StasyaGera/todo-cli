@@ -17,8 +17,7 @@ module Todo.Model
 import Data.Ratio (Ratio)
 import Numeric.Natural (Natural)
 import Data.Ord (comparing)
-import Data.List (sortBy, foldl')
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List (sortBy)
 import Data.Foldable (toList)
 import GHC.Generics (Generic)
 import Data.Hashable (Hashable (..))
@@ -27,7 +26,6 @@ import qualified Data.HashSet as HSet
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HMap
 import Data.Text (Text)
-import qualified Data.Text as T
 
 import Data.NESet (NonEmptySet (..))
 import qualified Data.NESet as NESet
@@ -75,4 +73,4 @@ tagStatistics :: Todos -> HashMap Tag Int
 tagStatistics = count . concatMap (toList . todoTags)
   where
     count :: (Eq a, Hashable a) => [a] -> HashMap a Int
-    count = foldl' (\dict x -> HMap.insertWith (+) x 1 dict) mempty
+    count xs = HMap.fromListWith (+) [ (x, 1) | x <- xs ]
