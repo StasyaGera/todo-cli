@@ -14,27 +14,29 @@ module Todo.Model
     , tagStatistics
     ) where
 
-import Data.List (sortBy, foldl')
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.Ord (comparing)
 import Data.Ratio (Ratio)
 import Numeric.Natural (Natural)
+import Data.Ord (comparing)
+import Data.List (sortBy, foldl')
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Foldable (toList)
 import GHC.Generics (Generic)
 import Data.Hashable (Hashable (..))
 import Data.HashSet (HashSet)
-import Data.HashMap.Strict (HashMap)
 import qualified Data.HashSet as HSet
+import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HMap
-import Data.Foldable (toList)
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Data.NESet (NonEmptySet (..))
 import qualified Data.NESet as NESet
 
 data State = TODO | DONE | FAIL deriving (Eq, Show, Generic)
-newtype Title = Title (NonEmpty Char) deriving (Eq, Show, Hashable)
+newtype Title = Title Text deriving (Eq, Show, Hashable)
 -- the higher the priority value, the more urgent the task
 newtype Priority = Priority (Ratio Natural) deriving (Eq, Show, Ord, Hashable)
-newtype Tag = Tag (NonEmpty Char) deriving (Eq, Show, Ord, Hashable)
+newtype Tag = Tag Text deriving (Eq, Show, Ord, Hashable)
 newtype Deadline = Deadline Int deriving (Eq, Show, Ord, Hashable)
 type Tags = NonEmptySet Tag
 type Todos = HashSet Todo
@@ -48,7 +50,7 @@ data Todo = Todo
     , todoTags        :: Tags
     , todoSubtasks    :: Todos
     , todoDeadline    :: Maybe Deadline
-    , todoDescription :: Maybe String
+    , todoDescription :: Maybe Text
     } deriving (Eq, Show, Generic)
 
 instance Hashable Todo 
