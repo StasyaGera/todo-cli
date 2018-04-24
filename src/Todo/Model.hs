@@ -1,9 +1,9 @@
 module Todo.Model
     ( Todo (..)
     , State (..)
-    , Title (..)
+    , Title (unTitle), mkTitle, unsafeMkTitle
     , Priority (..)
-    , Tag (..)
+    , Tag (unTag), mkTag, unsafeMkTag
     , Deadline (..)
     , Tags
     , Todos
@@ -31,10 +31,10 @@ import Data.NESet (NonEmptySet (..))
 import qualified Data.NESet as NESet
 
 data State = TODO | DONE | FAIL deriving (Eq, Show, Generic)
-newtype Title = Title Text deriving (Eq, Show, Hashable)
+newtype Title = Title { unTitle :: Text } deriving (Eq, Show, Hashable)
 -- the higher the priority value, the more urgent the task
 newtype Priority = Priority (Ratio Natural) deriving (Eq, Show, Ord, Hashable)
-newtype Tag = Tag Text deriving (Eq, Show, Ord, Hashable)
+newtype Tag = Tag { unTag :: Text } deriving (Eq, Show, Ord, Hashable)
 newtype Deadline = Deadline Int deriving (Eq, Show, Ord, Hashable)
 type Tags = NonEmptySet Tag
 type Todos = HashSet Todo
@@ -52,6 +52,26 @@ data Todo = Todo
     } deriving (Eq, Show, Generic)
 
 instance Hashable Todo 
+
+mkTag :: Text -> Maybe Tag
+mkTag t
+    | t == mempty = Nothing
+    | otherwise   = Just (Tag t)
+
+unsafeMkTag :: Text -> Tag
+unsafeMkTag t
+    | t == mempty = error "Tag.unsafeMkTag: empty text"
+    | otherwise   = Tag t
+
+mkTitle :: Text -> Maybe Title
+mkTitle t
+    | t == mempty = Nothing
+    | otherwise   = Just (Title t)
+
+unsafeMkTitle :: Text -> Title
+unsafeMkTitle t
+    | t == mempty = error "Title.unsafeMkTitle: empty text"
+    | otherwise   = Title t
 
 defTodo :: Title -> Priority -> Tags -> Todo
 defTodo todoTitle todoPriority todoTags = Todo { todoState = TODO
