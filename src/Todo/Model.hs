@@ -7,7 +7,7 @@ module Todo.Model
     , Deadline (..)
     , Tags
     , Todos
-    , defTodo
+    , defTodo, defTodoTimed
     , getByState
     , getTopPrio
     , getByTag
@@ -26,6 +26,9 @@ import qualified Data.HashSet as HSet
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HMap
 import Data.Text (Text)
+import Data.Time.Clock (UTCTime (..))
+import qualified Data.Time.Clock as TClock
+import qualified Data.Time.Calendar as TCalendar
 
 import Data.NESet (NonEmptySet (..))
 import qualified Data.NESet as NESet
@@ -41,6 +44,13 @@ type Todos = HashSet Todo
 
 instance Hashable State
 
+instance Hashable TClock.DiffTime where
+    hashWithSalt salt = hashWithSalt salt . toRational
+instance Hashable TCalendar.Day where
+    hashWithSalt salt (TCalendar.ModifiedJulianDay d) = hashWithSalt salt d
+instance Hashable UTCTime where
+    hashWithSalt salt (UTCTime d dt) = salt `hashWithSalt` d `hashWithSalt` dt
+
 data Todo = Todo
     { todoState       :: State
     , todoTitle       :: Title
@@ -49,6 +59,7 @@ data Todo = Todo
     , todoSubtasks    :: Todos
     , todoDeadline    :: Maybe Deadline
     , todoDescription :: Maybe Text
+    , todoTimestamp   :: Maybe UTCTime
     } deriving (Eq, Show, Generic)
 
 instance Hashable Todo 
@@ -78,6 +89,15 @@ defTodo todoTitle todoPriority todoTags = Todo { todoState = TODO
                                                , todoSubtasks = mempty
                                                , todoDeadline = Nothing
                                                , todoDescription = Nothing
+                                               , todoTimestamp = Nothing
+                                               , .. }
+
+defTodoTimed :: Title -> Priority -> Tags -> UTCTime -> Todo
+defTodoTimed todoTitle todoPriority todoTags todoTime = Todo { todoState = TODO
+                                               , todoSubtasks = mempty
+                                               , todoDeadline = Nothing
+                                               , todoDescription = Nothing
+                                               , todoTimestamp = Just todoTime
                                                , .. }
 
 getByState :: State -> Todos -> Todos
